@@ -36,10 +36,10 @@ uS_to_S = 1e6
 
 numSlots = int((uS_to_S / slotDuration) * simTime)
 
-print("Number of slots: " + str(numSlots) )
+
 
 # use carrier sensing?
-useCarrierSense = False
+useCarrierSense = True
 
 # which scenario are we running?
 stationsListening = True
@@ -150,3 +150,11 @@ for i in range(0, numSlots):
     channel.update()
 
 # to do: final data calculations
+
+T_a = (stationA.successes * dataFrameSizeBytes) * 8 / simTime
+T_c = (stationC.successes * dataFrameSizeBytes) * 8 / simTime
+print("Transmission rate for station " + stationA.name + ": " + str(T_a))
+print("Transmission rate for station " + stationC.name + ": " + str(T_c))
+
+channel.printOwnership()
+print("Number of slots: " + str(numSlots) )

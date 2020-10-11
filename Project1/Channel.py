@@ -52,6 +52,10 @@ class Channel():
             print("Channel removed user: " + str(stationName))
             self.users.remove(stationName)
 
+    def printOwnership(self):
+        for user in self.slotsOwned:
+            print("Channel ownership: " + user + " - " + str(self.slotsOwned[user]) + " slots")
+
     def update(self):
 
         nextState = self.status

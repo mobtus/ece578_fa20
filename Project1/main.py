@@ -27,7 +27,7 @@ lambdaC = lambdaA
 transmissionRate = 24
 
 # sim time in seconds
-simTime = 1
+simTime = 0.1
 
 # slot duration in micro seconds
 slotDuration = 10
@@ -36,6 +36,13 @@ uS_to_S = 1e6
 numSlots = int((uS_to_S / slotDuration) * simTime)
 
 print("Number of slots: " + str(numSlots) )
+
+# use carrier sensing?
+useCarrierSense = False
+
+# which scenario are we running?
+stationsListening = True
+
 # print(str(type(lambdaA)))
 
 
@@ -43,15 +50,15 @@ print("Number of slots: " + str(numSlots) )
 
 # frame arrival slots
 xa = [100, 256, 334, 500, 715, 999]
-xc = [100, 256, 334, 500, 715, 999]
-#xc = [130, 246, 404, 500, 820, 972]
+#xc = [100, 256, 334, 500, 715, 999]
+xc = [130, 246, 404, 500, 820, 972]
 #xa = [100]
 #xc = [100]
 
 # initialize channel and stations
-channel = Channel(False, ackDuration)
-stationA = Station("A", channel)
-stationC = Station("C", channel)
+channel = Channel(useCarrierSense, sifsDuration, ctsDuration, ackDuration, rtsDuration)
+stationA = Station("A", channel, useCarrierSense, stationsListening)
+stationC = Station("C", channel, useCarrierSense, stationsListening)
 
 stationA.setArrivals(xa)
 stationC.setArrivals(xc)

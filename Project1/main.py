@@ -28,7 +28,7 @@ lambdaC = lambdaA
 transmissionRate = 24
 
 # sim time in seconds
-simTime = 10
+simTime = 1
 
 # slot duration in micro seconds
 slotDuration = 10
@@ -39,10 +39,10 @@ numSlots = int((uS_to_S / slotDuration) * simTime)
 
 
 # use carrier sensing?
-useCarrierSense = True
+useCarrierSense = False
 
 # which scenario are we running?
-stationsListening = True
+stationsListening = False
 
 
 def calc_arriv_time(input_lambda):
@@ -126,7 +126,9 @@ xc_arrivals = list()
 #xa = [100]
 #xc = [100]
 
-[xa_arrivals, xc_arrivals] = calc_arriv_time(1000)
+[xa_arrivals, xc_arrivals] = calc_arriv_time(200)
+# xa_arrivals = [100]
+# xc_arrivals = [130]
 # print(str(xa_arrivals))
 # print(str(xc_arrivals))
 # exit()
@@ -157,4 +159,5 @@ print("Transmission rate for station " + stationA.name + ": " + str(T_a))
 print("Transmission rate for station " + stationC.name + ": " + str(T_c))
 
 channel.printOwnership()
-print("Number of slots: " + str(numSlots) )
+print("Fairness Index:" , (channel.slotsOwned['A'] / channel.slotsOwned['C']))
+# print("Number of slots: " + str(numSlots) )

@@ -26,6 +26,8 @@ class Channel():
         self.rtsDuration = rtsLength
         self.carrierSense = useCarrierSense     # true if using carrier sensing (RTS/CTS handshake)
         self.waitingData = False
+        self.waitToReset = False
+        self.doNotAck = False
         self.users = list()                     # list of users to determine collision if multiple access at once
         self.slotsOwned = dict()
 
@@ -56,26 +58,39 @@ class Channel():
         for user in self.slotsOwned:
             print("Channel ownership: " + user + " - " + str(self.slotsOwned[user]) + " slots")
 
+
     def update(self):
 
         nextState = self.status
         # handle idle state
-        if self.status is channelStatus.IDLE and len(self.users) == 1 and self.carrierSense is False:
+        if self.status is channelStatus.IDLE and len(self.users) == 1 and self.carrierSense is False and self.waitToReset is False:
             # only 1 user so he gets the channel
             print("Channel receiving data!")
             nextState = channelStatus.RECV
-        elif self.status is channelStatus.IDLE and len(self.users) == 1 and self.carrierSense is True:
+        elif self.status is channelStatus.IDLE and len(self.users) == 1 and self.carrierSense is True and self.waitToReset is False:
             print("Channel receiving RTS!")
             nextState = channelStatus.RTSWAIT
+        # elif self.status is channelStatus.IDLE and len(self.users) == 0 and self.waitToReset is True:
+            # print("Channel reset after collision!")
 
         # handle recieve state
-        elif self.status is channelStatus.RECV and len(self.users) == 0:
+        elif self.status is channelStatus.RECV and len(self.users) == 0 and self.doNotAck is False:
             # receive is complete since user has forfeited channel use
             nextState = channelStatus.ACK
+
+        elif self.status is channelStatus.RECV and len(self.users) == 0 and self.doNotAck is True:
+            # collision detected, throw out data (no ACK)
+            nextState = channelStatus.IDLE
+            self.doNotAck = False
 
         elif self.status is channelStatus.RECV and len(self.users) == 1:
             # update slots owned dictionary
             self.slotsOwned[self.users[0]] += 1
+        
+        elif self.status is channelStatus.RECV and len(self.users) > 1:
+            # collision (probably from hidden terminal scenario)
+            # nextState = channelStatus.IDLE
+            self.doNotAck = True
 
         # ack state
         elif self.status is channelStatus.ACK:
@@ -101,18 +116,27 @@ class Channel():
         elif self.status is channelStatus.SIFS:
             self.currDuration += 1
             if self.currDuration == self.sifsDuration:
+                # print("Channel done with SIFS!")
                 self.currDuration = 0
-                if self.waitingData is False:
+                if self.waitingData is False:# and len(self.users) == 1:
+                    print("Channel sending CTS!")
                     nextState = channelStatus.CTS
-                else:
+                elif self.waitingData is True and len(self.users) == 1:
                     print("Channel receiving data!")
                     nextState = channelStatus.RECV
+                elif len(self.users) > 1:
+                    print("Multiple stations accessing simultaneously during SIFS!")
+                    # nextState = channelStatus.IDLE
 
-        elif self.status is channelStatus.CTS:
+        # CTS
+        elif self.status is channelStatus.CTS: #and len(self.users) == 1:
             self.currDuration += 1
             if self.currDuration == self.ctsDuration:
                 self.currDuration = 0
                 self.waitingData = True
                 nextState = channelStatus.SIFS
+        # elif self.status is channelStatus.CTS and len(self.users) > 1:
+        #     print("Multiple stations accessing simultaneously when starting CTS!")
+        #     nextState = channelStatus.IDLE
 
         self.status = nextState

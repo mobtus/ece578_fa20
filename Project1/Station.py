@@ -48,6 +48,7 @@ class Station():
         self.isListening = listening
         self.waitCTS = False
         self.waitACK = False
+        self.notOurCTS = False
         self.name = str(stationName)
 
     ### destructor
@@ -96,15 +97,22 @@ class Station():
             # need to start trying to send a data frame
             print("Station " + self.name + " changing state to DIFS! (slot: " + str(currentSlot) + ")")
             self.status = stationStatus.DIFS    # don't wait for next slot to begin
-            if self.channel.getStatus() is channelStatus.RECV:
+            if self.isListening is True and self.channel.getStatus() is channelStatus.RECV:
                 nextState = stationStatus.NAV
-        elif self.status is stationStatus.IDLE and self.channel.getStatus() is channelStatus.RECV:
+        elif self.isListening is True and self.status is stationStatus.IDLE and (self.channel.getStatus() is channelStatus.RECV or self.channel.getStatus() is channelStatus.RTSWAIT):
             # channel is busy so go to NAV
             self.status = stationStatus.NAV
+        elif self.status is stationStatus.IDLE and self.channel.getStatus() is channelStatus.CTS:
+            # another station is using the channel, go to NAV after CTS
+            self.notOurCTS = True
+            self.status = stationStatus.CTSWAIT
 
         # DIFS state
         if self.status is stationStatus.DIFS:
             self.currDuration += 1
+            if self.useCarrerSense is True and self.channel.getStatus() == channelStatus.CTS:
+                self.notOurCTS = True
+                nextState = stationStatus.CTSWAIT
             if self.currDuration == self.difsDuration:
                 print("Station " + self.name + " in DIFS, next state: BACKOFF! (slot: " + str(currentSlot) + ")")
                 nextState = stationStatus.BACKOFF
@@ -123,14 +131,19 @@ class Station():
             #     nextState = stationStatus.RTS
             elif self.currDuration < self.difsDuration:
                 nextState = stationStatus.DIFS
-            if self.channel.getStatus() is channelStatus.RECV:
+            if self.isListening is True and self.channel.getStatus() is channelStatus.RECV:
+                nextState = stationStatus.NAV
+            elif self.isListening is True and self.channel.getStatus() == channelStatus.RTSWAIT:
                 nextState = stationStatus.NAV
 
 
         # backoff state
         if self.status is stationStatus.BACKOFF and self.backoff > 0:
             self.currBackoff += 1
-            if (self.currBackoff >= self.backoff) and (self.channel.getStatus() == channelStatus.IDLE):
+            if self.useCarrerSense is True and self.channel.getStatus() == channelStatus.CTS:
+                self.notOurCTS = True
+                nextState = stationStatus.CTSWAIT
+            if (self.currBackoff >= self.backoff) and ((self.channel.getStatus() == channelStatus.IDLE) or (self.isListening is False)):
                 # we're able to transmit
                 print("Station " + self.name + " in BACKOFF, ready to transmit! (slot: " + str(currentSlot) + ")")
                 self.channel.acquire(self.name)
@@ -140,13 +153,13 @@ class Station():
                 else:
                     nextState = stationStatus.RTS
 
-            elif self.channel.getStatus() == channelStatus.RECV or (self.isListening and self.channel.getStatus() is channelStatus.SIFS):
+            elif self.isListening is True and (self.channel.getStatus() == channelStatus.RECV or self.channel.getStatus() is channelStatus.SIFS or self.channel.getStatus() is channelStatus.RTSWAIT):
                 # someone else has the channel
                 nextState = stationStatus.NAV
 
         elif self.status is stationStatus.BACKOFF and self.backoff == 0:
             # essentially skip this state
-            if self.channel.getStatus() == channelStatus.IDLE:
+            if self.channel.getStatus() == channelStatus.IDLE or self.isListening is False:
                 # we're able to transmit
                 print("Station " + self.name + " in BACKOFF, ready to transmit! (slot: " + str(currentSlot) + ")")
                 self.channel.acquire(self.name)
@@ -186,6 +199,7 @@ class Station():
                 self.currACKDur += 1
                 if self.currACKDur == self.ackDuration:
                     # back to DIFS, then resume backoff
+                    self.notOurCTS = False
                     self.currACKDur = 0
                     if self.queue > 0:
                         nextState = stationStatus.DIFS
@@ -243,15 +257,22 @@ class Station():
             self.currDuration += 1
             if self.currDuration == self.ctsDuration:
                 self.waitCTS = False
-                print("Station " + self.name + " received CTS! (slot: " + str(currentSlot) + ")")
-                nextState = stationStatus.SIFS
                 self.currDuration = 0
+                if self.notOurCTS is False:
+                    print("Station " + self.name + " received CTS! (slot: " + str(currentSlot) + ")")
+                    nextState = stationStatus.SIFS
+                else:
+                    print("Station " + self.name + " detected channel in use! (notOurCTS) Deferring transmission. (slot: " + str(currentSlot) + ")")
+                    self.channel.forfeit(self.name) # give up channel
+                    nextState = stationStatus.NAV
         elif self.status is stationStatus.CTSWAIT and (self.channel.getStatus() == channelStatus.SIFS or self.channel.getStatus() == channelStatus.RECV):
             # channel is in use
-            print("Station " + self.name + " detected channel in use! Deferring transmission. (slot: " + str(currentSlot) + ")")
+            print("Station " + self.name + " detected channel in use! (CTS passed) Deferring transmission. (slot: " + str(currentSlot) + ")")
             nextState = stationStatus.NAV
+            self.notOurCTS = False
             self.waitCTS = False
             self.currDuration = 0
+            self.channel.forfeit(self.name) # give up channel
         elif self.status is stationStatus.CTSWAIT and self.channel.getStatus() == channelStatus.IDLE:
             # we ain't gettin a CTS (collision)
             self.currDuration += 1

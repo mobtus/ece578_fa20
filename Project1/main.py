@@ -28,7 +28,7 @@ lambdaC = lambdaA
 transmissionRate = 24
 
 # sim time in seconds
-simTime = 1
+simTime = 10
 
 # slot duration in micro seconds
 slotDuration = 10
@@ -39,32 +39,24 @@ numSlots = int((uS_to_S / slotDuration) * simTime)
 
 
 # use carrier sensing?
-useCarrierSense = False
+useCarrierSense = True
 
 # which scenario are we running?
-stationsListening = False
+stationsListening = True
 
 
 def calc_arriv_time(input_lambda):
-    # sim_time = 10
-    # print(simTime)
+
     points = input_lambda * simTime
 
     # uniformly distributed values
-    #ua = np.random.uniform(low=0.0, high=1.0, size=points)
-    #uc = np.random.uniform(low=0.0, high=1.0, size=points)
     ua = list()
     uc = list()
     for i in range(0, points):
         ua.append((random.randint(0, 100000) / 100000))
         uc.append((random.randint(0, 100000) / 100000))
 
-    # print(str(ua))
-    # print(str(uc))
-    # return [ua, uc]
     # uniformly distributed values converted into exponentially distributed values 
-    # xa = np.empty(0)
-    # xc = np.empty(0)
     xa = list()
     xc = list()
     for i in ua:
@@ -80,26 +72,16 @@ def calc_arriv_time(input_lambda):
 
     for i in range(0, len(xa)):
         xa[i] = xa[i]/slot_duration
+
     for i in range(0, len(xc)):
         xc[i] = xc[i]/slot_duration
 
-    # print(str(xa))
-    # print(str(xc))
-
-    
     for i in range(0, len(xa)):
         xa[i] = math.ceil(xa[i])
         
     for i in range(0, len(xc)):
         xc[i] = math.ceil(xc[i])
-    
-    
-    # slots converted into arrival time 
-    # arrival_a = np.array(xa[0])
-    # arrival_c = np.array(xc[0])
-    
-    # print(arrival_a)
-        
+
     for i in range(1, len(xa)):
         xa[i] = xa[i] + xa[i-1]
         
@@ -109,29 +91,11 @@ def calc_arriv_time(input_lambda):
     return [xa, xc]
 
 
-
-
-
-# print(str(type(lambdaA)))
-
-
-# to do: calculate frame arrival slots based on random uniformly distributed values
-
 # frame arrival slots
 xa_arrivals = list()
 xc_arrivals = list()
-# xa = [100, 256, 334, 500, 715, 999]
-#xc = [100, 256, 334, 500, 715, 999]
-# xc = [130, 246, 404, 500, 820, 972]
-#xa = [100]
-#xc = [100]
 
-[xa_arrivals, xc_arrivals] = calc_arriv_time(200)
-# xa_arrivals = [100]
-# xc_arrivals = [130]
-# print(str(xa_arrivals))
-# print(str(xc_arrivals))
-# exit()
+[xa_arrivals, xc_arrivals] = calc_arriv_time(2000)
 
 
 # initialize channel and stations
@@ -151,7 +115,7 @@ for i in range(0, numSlots):
     stationC.update(i)
     channel.update()
 
-# to do: final data calculations
+# final data calculations
 
 T_a = (stationA.successes * dataFrameSizeBytes) * 8 / simTime
 T_c = (stationC.successes * dataFrameSizeBytes) * 8 / simTime
@@ -160,4 +124,3 @@ print("Transmission rate for station " + stationC.name + ": " + str(T_c))
 
 channel.printOwnership()
 print("Fairness Index:" , (channel.slotsOwned['A'] / channel.slotsOwned['C']))
-# print("Number of slots: " + str(numSlots) )

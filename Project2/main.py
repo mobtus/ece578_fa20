@@ -4,7 +4,7 @@ from ASEntry import linkType
 import os
 import fileinput
 import matplotlib.pyplot as plt 
-# import numpy as np c
+import numpy as np
 from matplotlib import colors 
 from matplotlib.ticker import PercentFormatter 
 
@@ -38,7 +38,7 @@ for asi in entrylist:
     else:
         nodedegrees[asi.as1] += 1
 
-degreebins = [0, 0, 0, 0, 0, 0] # 1, 2-5, 6-100, 101-200, 201-1000, 1001+
+degreebins = np.array([0, 0, 0, 0, 0, 0]) # 1, 2-5, 6-100, 101-200, 201-1000, 1001+
 for key in nodedegrees:
     if nodedegrees[key] == 1:
         degreebins[0] += 1
@@ -52,4 +52,11 @@ for key in nodedegrees:
         degreebins[4] += 1
     else:
         degreebins[5] += 1
-# print(nodedegrees) 
+        
+
+degreebins=degreebins/sum(degreebins)
+#print(degreebins)
+
+binLabels = ['1', '2-5', '6-100', '101-200', '201-1000', '1001+']
+plt.bar(binLabels, degreebins)
+plt.show()

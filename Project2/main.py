@@ -57,6 +57,6 @@ for key in nodedegrees:
 degreebins=degreebins/sum(degreebins)
 #print(degreebins)
 
-binLabels = ['1', '2-5', '6-100', '101-200', '201-1000', '1001+']
+binLabels = ['1', '2-5', '6-100', '101-200', '201-1000', '>1000']
 plt.bar(binLabels, degreebins)
 plt.show()
